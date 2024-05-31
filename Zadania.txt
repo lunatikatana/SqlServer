@@ -1,0 +1,197 @@
+-- Задание 3
+-- Вывести списки групп по заданному направлению с указание номера группы в формате ФИО, бюджет/внебюджет. Студентов выводить в алфавитном порядке.
+
+SELECT Student.full_name AS [Full name],
+       Groups.group_names AS [Group name],
+       CASE WHEN Student.budget = 1 THEN 'True' ELSE 'False' END AS budget
+FROM Student
+JOIN Groups ON Groups.id = Student.group_id
+Otiming_id R BY Student.full_name
+
+
+-- Вывести студентов с фамилией, начинающейся с первой буквы вашей фамилии, с указанием ФИО, номера группы и направления обучения.
+
+SELECT Student.full_name AS [Full name],
+       Groups.group_names AS [Group name],
+       dir_stud.dir_name AS [direction name]
+FROM Student
+JOIN Groups ON Groups.id = Student.group_id
+JOIN dir_stud ON dir_stud.id = Groups.derect_id
+WHERE Student.full_name LIKE 'B%';
+
+
+-- Вывести список студентов для поздравления по месяцам в формате Фамилия И.О., день и название месяца рождения, номером группы и направлением обучения.
+
+SELECT 
+    	Student.full_name AS [full_name], 
+    	DAY(Student.date_of_birth) AS [Day], 
+    	DATENAME(MONTH, Student.date_of_birth) AS [Month], 
+    	Groups.group_names AS [Group], 
+    	dir_stud.dir_name AS [Direction name]
+FROM Student
+	JOIN Groups ON Student.group_id = Groups.id
+	JOIN dir_stud ON Groups.derect_id = dir_stud.id
+ORDER BY MONTH(Student.date_of_birth), DAY(Student.date_of_birth);
+
+
+-- Вывести студентов с указанием возраста в годах.
+
+SELECT full_name, DATEDIFF(YEAR, date_of_birth, GETDATE()) AS Age
+FROM Student;
+
+-- Вывести студентов, у которых день рождения в текущем месяце.
+
+SELECT full_name AS [Name], date_of_birth AS [Birthday]
+FROM Student
+WHERE MONTH(Student.date_of_birth) = MONTH(GETDATE());
+
+-- Вывести количество студентов по каждому направлению.
+
+SELECT COUNT(Student.id) AS [Students numb], dir_stud.dir_name AS [direction name]
+FROM Student
+JOIN Groups ON Groups.id = Student.group_id
+JOIN dir_stud ON dir_stud.id = Groups.derect_id
+GROUP BY dir_stud.dir_name;
+
+
+-- Вывести количество бюджетных и внебюджетных мест по группам. Для каждой группы вывести номер и название направления.
+
+SELECT 
+
+    Groups.group_names AS [Group],
+    dir_stud.dir_name AS [Direction name],
+    SUM(CASE WHEN Student.budget = 1 THEN 1 ELSE 0 END) AS [Budget place],
+    SUM(CASE WHEN Student.budget = 0 THEN 1 ELSE 0 END) AS [NonBudget place]
+FROM 
+    Student
+JOIN 
+    Groups ON Groups.id = Student.group_id
+JOIN 
+    dir_stud ON dir_stud.id = Groups.derect_id
+GROUP BY 
+    Groups.id, Groups.group_names, dir_stud.dir_name;
+
+
+
+-- Задание 5
+-- Вывести списки групп по каждому предмету с указанием преподавателя.
+
+SELECT courses.name, Groups.group_names, prepodovatyely.name
+FROM courses
+JOIN dircoprepod ON dircoprepod.courses_id = courses.id
+JOIN dir_stud ON dir_stud.id = dircoprepod.derect_id
+JOIN Groups ON Groups.derect_id = dir_stud.id
+JOIN prepodovatyely ON prepodovatyely.id = dircoprepod.teacher_id;
+
+-- Определить, какую дисциплину изучает максимальное количество студентов.
+
+SELECT courses.name AS [disc_name], COUNT(Student.full_name) AS [s_num]
+FROM courses
+JOIN dircoprepod ON dircoprepod.courses_id = courses.id
+JOIN Marks ON Marks.subject_co_id = dircoprepod.id
+JOIN Student ON Marks.student_id = Student.id
+GROUP BY courses.name
+ORDER BY COUNT(Student.full_name) DESC 
+OFFSET 0 ROWS FETCH FIRST 1 ROWS ONLY;
+
+-- Определить сколько студентов обучатся у каждого из преподавателей.
+
+SELECT prepodovatyely.name, COUNT(Student.id) AS [s_num]
+FROM prepodovatyely
+JOIN dircoprepod ON dircoprepod.teacher_id = prepodovatyely.id
+JOIN Marks ON Marks.subject_co_id = dircoprepod.id
+JOIN Student ON Student.id = Marks.student_id
+GROUP BY prepodovatyely.name;
+
+-- Определить долю сдавших студентов по каждой дисциплине (не оценки или 2 считать не сдавшими).
+
+SELECT courses.name AS [disc_name], COUNT(CASE WHEN Marks.mark > 2 THEN 1 END) AS [s_num]
+FROM courses
+JOIN dircoprepod ON dircoprepod.courses_id = courses.id
+JOIN Marks ON Marks.subject_co_id = dircoprepod.id
+JOIN Student ON Marks.student_id = Student.id
+GROUP BY courses.name
+ORDER BY COUNT(Student.full_name) DESC;
+
+-- Определить среднюю оценку по предметам (для сдавших студентов).
+
+SELECT courses.name AS [disc_name], AVG(CASE WHEN Marks.mark > 2 THEN Marks.mark END) AS [s_avg]
+FROM courses
+JOIN dircoprepod ON dircoprepod.courses_id = courses.id
+JOIN Marks ON Marks.subject_co_id = dircoprepod.id
+JOIN Student ON Marks.student_id = Student.id
+GROUP BY courses.name
+ORDER BY COUNT(Student.full_name) DESC;
+
+-- Определить группу с максимальной средней оценкой (включая не сдавших).
+
+SELECT Groups.group_names, AVG(Marks.mark) AS [average_mark]
+FROM Groups
+JOIN dir_stud ON dir_stud.id = Groups.derect_id
+JOIN dircoprepod ON dircoprepod.derect_id = dir_stud.id
+JOIN Marks ON Marks.subject_co_id = dircoprepod.id
+GROUP BY Groups.group_names
+ORDER BY AVG(Marks.mark) DESC
+OFFSET 0 ROWS FETCH FIRST 1 ROWS ONLY;
+
+-- Вывести студентов со всеми оценками отлично и не имеющих несданный экзамен.
+
+SELECT Student.full_name, AVG(Marks.mark)
+FROM Student
+JOIN Marks ON Marks.student_id = Student.id
+GROUP BY Student.full_name
+HAVING AVG(Marks.mark) = 5.0;
+
+-- Вывести кандидатов на отчисление (не сдан не менее двух предметов)
+
+SELECT Student.full_name
+FROM Student
+JOIN Marks ON Marks.student_id = Student.id
+WHERE Marks.mark = 2
+GROUP BY Student.full_name
+HAVING COUNT(*) >= 2;
+
+-- Задание 7
+
+-- Вывести по заданному предмету количество посещенных занятий.
+
+SELECT COUNT(Posechaem.id) as num_presence
+FROM courses
+JOIN dircoprepod ON dircoprepod.courses_id = courses.id
+JOIN Les_Time ON Les_Time.subject_co_id = dircoprepod.id
+JOIN Posechaem ON Posechaem.timing_id = Les_Time.id
+WHERE courses.name = 'Combinatorics' AND Posechaem.presense = 1;
+
+-- Вывести по заданному предмету количество пропущенных занятий.
+
+SELECT COUNT(Posechaem.id) as num_absence
+FROM courses
+JOIN dircoprepod ON dircoprepod.courses_id = courses.id
+JOIN Les_Time ON Les_Time.subject_co_id = dircoprepod.id
+JOIN Posechaem ON Posechaem.timing_id = Les_Time.id
+WHERE courses.name = 'Combinatorics' AND Posechaem.presense = 0;
+
+-- Вывести по заданному преподавателю количество студентов на каждом занятии.
+
+SELECT COUNT(Posechaem.id) as num_students, Les_Time.subject_co_id
+FROM prepodovatyely
+JOIN dircoprepod ON dircoprepod.teacher_id = prepodovatyely.id
+JOIN Les_Time ON Les_Time.subject_co_id = dircoprepod.id
+JOIN Posechaem ON Posechaem.timing_id = Les_Time.id
+WHERE prepodovatyely.name = 'Kovrigin Alexey Victorovich' AND Posechaem.presense = 1
+GROUP BY Les_Time.subject_co_id;
+
+-- Для каждого студента вывести общее время, потраченное на изучение каждого предмета.
+
+SELECT
+    Student.id AS student_id, Student.full_name AS student_name, dir_stud.dir_name AS dir_name, courses.name AS courses_name, 
+    SUM(DATEDIFF(SECOND, Pairs_Time.time_start, Pairs_Time.time_end)) AS total_study_time
+FROM Student
+JOIN Groups ON Student.group_id = Groups.id
+JOIN dir_stud ON Groups.derect_id = dir_stud.id
+JOIN dircoprepod ON dir_stud.id = dircoprepod.derect_id
+JOIN courses ON dircoprepod.courses_id = courses.id
+JOIN Les_Time ON dircoprepod.id = Les_Time.subject_co_id
+JOIN Pairs_Time ON Les_Time.time_id = Pairs_Time.id
+JOIN Posechaem ON Les_Time.id = Posechaem.timing_id AND Student.id = Posechaem.student_id AND Posechaem.presense = 1
+GROUP BY Student.id, Student.full_name, dir_stud.dir_name, courses.name;
