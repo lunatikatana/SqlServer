@@ -9,12 +9,6 @@ CREATE TABLE Student (
 	PRIMARY KEY (id)
 );
 
-CREATE TABLE telephone (
-    	id INT NOT NULL IDENTITY(1,1),
-    	student_id INT NOT NULL,
-    	numb VARCHAR(25) NOT NULL,
-    	PRIMARY KEY (id)
-);
 
 CREATE TABLE Groups (
     	id INT NOT NULL IDENTITY(1,1),
